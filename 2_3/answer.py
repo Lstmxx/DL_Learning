@@ -62,7 +62,6 @@ def initialize_parameters(layers_dims):
     return parameters
 
 def forward_propagation(X,parameters):
-    caches = []
     l = len(parameters)//2
     A=X
     for i in range(1,l):
@@ -70,6 +69,61 @@ def forward_propagation(X,parameters):
         A = tf.nn.relu(tf.matmul(parameters['W'+str(i)],A_prew)+parameters['b'+str(i)])
     z3 = tf.matmul(parameters['W'+str(l)],A)+parameters['b'+str(l)]
     return z3
+
+def compute_cost(Z3, Y):
+    # to fit the tensorflow requirement for tf.nn.softmax_cross_entropy_with_logits(...,...)
+    logits = tf.transpose(Z3)
+    labels = tf.transpose(Y)
+    
+    ### START CODE HERE ### (1 line of code)
+    cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits = logits, labels = labels))
+    ### END CODE HERE ###
+    
+    return cost
+
+def model(X_train,Y_train,X_test,Y_test,layers_dims=[12288,25,12,6],learning_rate=0.0001,num_it=1500,minibatch_size = 32,print_cost = True):
+    ops.reset_default_graph()
+    tf.set_random_seed(1)
+    seed = 3
+    (n_x,m) = X_train.shape
+    n_y = Y_train.shape[0]
+    costs = []
+    X,Y = create_placeholders(n_x,n_y)
+    parameters = initialize_parameters(layers_dims)
+    z3 = forward_propagation(X,parameters)
+    cost = compute_cost(z3,Y)
+    OPT = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
+    init = tf.global_variables_initializer()
+    with tf.Session() as session:
+        session.run(init)
+        for i in range(num_it):
+            e_cost = 0
+            num_minibatches = int(m/minibatch_size)
+            seed = seed + 1 
+            minibatches = random_mini_batches(X_train,Y_train,mini_batch_size=minibatch_size,seed=seed)
+            for minibatche in minibatches:
+                (minibatch_x,minibatch_y) = minibatche
+                _,minibatch_cost = session.run([OPT,cost],feed_dict={X:minibatch_x,Y:minibatch_y})
+                e_cost += minibatch_cost/num_minibatches
+            if print_cost == True and i % 100 ==0:
+                print("Cost after epoch %i: %f" % (i,e_cost))
+            if print_cost == True and i % 5 == 0:
+                costs.append(e_cost)
+        plt.plot(np.squeeze(costs))
+        plt.ylabel('cost')
+        plt.xlabel('iterations (per tens)')
+        plt.title("Learning rate = "+str(learning_rate))
+        plt.show()
+
+        parameters = session.run(parameters)
+        print ("Parameters have been trained!")
+        correct_prediction = tf.equal(tf.argmax(z3), tf.argmax(Y))
+        accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
+        print ("Train Accuracy:", accuracy.eval({X: X_train, Y: Y_train}))
+        print ("Test Accuracy:", accuracy.eval({X: X_test, Y: Y_test}))
+        return parameters
+
+
 X_train_orig, Y_train_orig, X_test_orig, Y_test_orig, classes = load_dataset()
 # Flatten the training and test images
 X_train_flatten = X_train_orig.reshape(X_train_orig.shape[0], -1).T
@@ -81,22 +135,5 @@ X_test = X_test_flatten/255.
 Y_train = convert_to_one_hot(Y_train_orig, 6)
 Y_test = convert_to_one_hot(Y_test_orig, 6)
 
-# X,Y = create_placeholders(X_train.shape[0],Y_train.shape[0])
-# print ("X = " + str(X))
-# print ("Y = " + str(Y))
-
-tf.reset_default_graph()
-layers_dims=[12288,25,12,6]
-# with tf.Session() as seesion:
-#     parameters = initalize_parameters(layers_dims)
-#     print("W1 = " + str(parameters["W1"]))
-#     print("b1 = " + str(parameters["b1"]))
-#     print("W2 = " + str(parameters["W2"]))
-#     print("b2 = " + str(parameters["b2"]))
-#     print("W3 = " + str(parameters["W3"]))
-#     print("b3 = " + str(parameters["b3"]))
-with tf.Session() as sess:
-    X, Y = create_placeholders(12288, 6)
-    parameters = initialize_parameters(layers_dims)
-    Z3 = forward_propagation(X, parameters)
-    print("Z3 = " + str(Z3))
+# layers_dims=[12288,25,12,6]
+parameters = model(X_train, Y_train, X_test, Y_test)
