@@ -1,3 +1,5 @@
+# _*_ coding:utf-8 _*_
+
 import numpy as np
 import matplotlib.pyplot as plt
 import h5py
@@ -5,7 +7,8 @@ import sklearn
 import sklearn.datasets
 import sklearn.linear_model
 import scipy.io
-
+import operator
+from functools import reduce
 def sigmoid(x):
     """
     Compute the sigmoid of x
@@ -140,7 +143,6 @@ def backward_propagation(X, Y, cache):
     """
     m = X.shape[1]
     (Z1, A1, W1, b1, Z2, A2, W2, b2, Z3, A3, W3, b3) = cache
-    
     dZ3 = A3 - Y
     dW3 = 1./m * np.dot(dZ3, A2.T)
     db3 = 1./m * np.sum(dZ3, axis=1, keepdims = True)
@@ -234,6 +236,7 @@ def compute_cost(a3, Y):
     m = Y.shape[1]
     
     logprobs = np.multiply(-np.log(a3),Y) + np.multiply(-np.log(1 - a3), 1 - Y)
+    #cost = (1./m) * (-np.dot(Y,np.log(a3).T) - np.dot(1-Y, np.log(1-a3).T))
     cost = 1./m * np.nansum(logprobs)
     
     return cost
@@ -321,16 +324,16 @@ def plot_decision_boundary(model, X, y):
     plt.contourf(xx, yy, Z, cmap=plt.cm.Spectral)
     plt.ylabel('x2')
     plt.xlabel('x1')
-    plt.scatter(X[0, :], X[1, :], c=y, cmap=plt.cm.Spectral)
+    plt.scatter(X[0, :], X[1, :], c=reduce(operator.add, y), cmap=plt.cm.Spectral)
     plt.show()
     
 def load_2D_dataset():
-    data = scipy.io.loadmat('datasets/data.mat')
+    data = scipy.io.loadmat('/home/negispringfield/Desktop/DL_Learning/2_1/datasets/data.mat')
     train_X = data['X'].T
     train_Y = data['y'].T
     test_X = data['Xval'].T
     test_Y = data['yval'].T
 
-    plt.scatter(train_X[0, :], train_X[1, :], c=train_Y, s=40, cmap=plt.cm.Spectral);
+    plt.scatter(train_X[0, :], train_X[1, :], c=reduce(operator.add, train_Y), s=40, cmap=plt.cm.Spectral);
     
     return train_X, train_Y, test_X, test_Y
